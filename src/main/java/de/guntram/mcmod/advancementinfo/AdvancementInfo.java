@@ -18,13 +18,13 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.advancement.Advancement;
 import net.minecraft.advancement.AdvancementProgress;
+import net.minecraft.advancement.PlacedAdvancement;
 import net.minecraft.advancement.criterion.CriterionConditions;
 import net.minecraft.client.gui.screen.advancement.AdvancementTab;
 import net.minecraft.client.gui.screen.advancement.AdvancementWidget;
 import net.minecraft.client.gui.screen.advancement.AdvancementsScreen;
 import net.minecraft.client.network.ClientAdvancementManager;
 import net.minecraft.client.resource.language.I18n;
-import net.minecraft.predicate.entity.AdvancementEntityPredicateSerializer;
 import net.minecraft.util.ActionResult;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
@@ -35,7 +35,7 @@ public class AdvancementInfo implements ClientModInitializer
 {
     static final String MODID = "advancementinfo";
     static final String VERSION = "@VERSION@";
-    static final Logger LOGGER = LogManager.getLogger();
+    public static final Logger LOGGER = LogManager.getLogger();
 
     static public AdvancementWidget mouseOver, mouseClicked;
     static public List<AdvancementStep> cachedClickList;
@@ -82,18 +82,6 @@ public class AdvancementInfo implements ClientModInitializer
                 }
             }
             if (translation == null) {
-                CriterionConditions conditions = ((AdvancementProgressAccessor)(progress)).getCriterion(s).getConditions();
-                if (conditions != null) {
-                    JsonObject o = conditions.toJson(AdvancementEntityPredicateSerializer.INSTANCE);
-                    JsonElement maybeEffects = o.get("effects");
-                    if (maybeEffects != null && maybeEffects instanceof JsonObject) {
-                        JsonObject effects = (JsonObject) maybeEffects;
-                        details = new ArrayList<>(effects.entrySet().size());
-                        for (Map.Entry<String, JsonElement> entry: effects.entrySet()) {
-                            details.add(I18n.translate("effect."+entry.getKey().replace(':', '.')));
-                        }
-                    }
-                }
                 translation = key;
             }
             result.add(new AdvancementStep(translation, obtained, details));
@@ -103,42 +91,45 @@ public class AdvancementInfo implements ClientModInitializer
     public static void setMatchingFrom(AdvancementsScreen screen, String text) {
         List<AdvancementStep> result = new ArrayList<>();
         ClientAdvancementManager advancementHandler = ((AdvancementScreenAccessor)screen).getAdvancementHandler();
-        Collection<Advancement> all = advancementHandler.getManager().getAdvancements();
+        Collection<PlacedAdvancement> all = advancementHandler.getManager().getAdvancements();
         int lineCount = 0;
-        
+
         text = text.toLowerCase();
-        for (Advancement adv: all) {
-            if(adv.getId().getPath().startsWith("recipes/")) {
+        for (PlacedAdvancement placed: all) {
+            Advancement adv = placed.getAdvancement();
+            net.minecraft.util.Identifier id = placed.getAdvancementEntry().id();
+
+            if(id.getPath().startsWith("recipes/")) {
                 continue;
             }
-            if (adv.getDisplay() == null) {
-                LOGGER.debug("! {} Has no display", adv.getId());
+            if (adv.display().isEmpty()) {
+                LOGGER.debug("! {} Has no display", id);
                 continue;
             }
-            if (adv.getDisplay().getTitle() == null) {
-                LOGGER.debug("! {} Has no title", adv.getId());
+            var display = adv.display().get();
+            if (display.getTitle() == null) {
+                LOGGER.debug("! {} Has no title", id);
                 continue;
             }
-            if (adv.getDisplay().getDescription() == null) {
-                LOGGER.debug("! {} Has no description", adv.getId());
+            if (display.getDescription() == null) {
+                LOGGER.debug("! {} Has no description", id);
                 continue;
             }
-            String title = adv.getDisplay().getTitle().getString();
-            String desc  = adv.getDisplay().getDescription().getString();
-            LOGGER.debug("- {} {}: {} ", adv.getId(), title, desc);
+            String title = display.getTitle().getString();
+            String desc  = display.getDescription().getString();
+            LOGGER.debug("- {} {}: {} ", id, title, desc);
             if (title.toLowerCase().contains(text)
             ||  desc.toLowerCase().contains(text)) {
                 ArrayList<String> details = new ArrayList<>();
                 details.add(desc);
-                AdvancementTab tab = ((AdvancementScreenAccessor)screen).myGetTab(adv);
-                if (tab == null) {
-                    LOGGER.info("no tab found for advancement {} title {} description {}", adv.getId(), title, desc);
+                AdvancementWidget widget = screen.getAdvancementWidget(placed);
+                if (widget == null) {
+                    LOGGER.info("no widget found for advancement {} title {} description {}", id, title, desc);
                     continue;
                 }
-                details.add(tab.getTitle().getString());
-                boolean done = ((AdvancementWidgetAccessor)(screen.getAdvancementWidget(adv))).getProgress().isDone();
+                boolean done = ((AdvancementWidgetAccessor)widget).getProgress().isDone();
                 result.add(new AdvancementStep(title, done, details));
-                lineCount+=3;
+                lineCount+=2;
             }
         }
         cachedClickList = result;

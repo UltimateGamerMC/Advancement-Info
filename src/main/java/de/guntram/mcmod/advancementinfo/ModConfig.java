@@ -9,9 +9,9 @@ import static de.guntram.mcmod.advancementinfo.AdvancementInfo.config;
 @Config(name = AdvancementInfo.MODID)
 public class ModConfig implements ConfigData {
     @ConfigEntry.ColorPicker
-    public int colorHave = 0x00aa00;
+    public int colorHave = -16733696;
     @ConfigEntry.ColorPicker
-    public int colorHaveNot = 0xaa0000;
+    public int colorHaveNot = -5570561;
     public int marginX = 30;
     public int marginY = 30;
 
