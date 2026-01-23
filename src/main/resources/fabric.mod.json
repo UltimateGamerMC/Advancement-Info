@@ -16,8 +16,7 @@
     "mixins": [ "mixins.advancementinfo.json" ],
     "accessWidener": "advancementinfo.accesswidener",
     "depends": {
-        "fabric": "*",
-        "cloth-config2": ">=5.0.0"
+        "fabricloader": "\u003e\u003d0.18.1"
     },
     "recommends": {
         "modmenu" : ">=2.0.0"
