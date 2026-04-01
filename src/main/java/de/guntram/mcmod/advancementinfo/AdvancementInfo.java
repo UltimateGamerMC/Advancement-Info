@@ -1,38 +1,31 @@
 package de.guntram.mcmod.advancementinfo;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import de.guntram.mcmod.advancementinfo.accessors.AdvancementProgressAccessor;
 import de.guntram.mcmod.advancementinfo.accessors.AdvancementScreenAccessor;
 import de.guntram.mcmod.advancementinfo.accessors.AdvancementWidgetAccessor;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
-
 import me.shedaniel.autoconfig.AutoConfig;
 import me.shedaniel.autoconfig.ConfigHolder;
 import me.shedaniel.autoconfig.serializer.JanksonConfigSerializer;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.advancement.Advancement;
-import net.minecraft.advancement.AdvancementProgress;
-import net.minecraft.advancement.PlacedAdvancement;
-import net.minecraft.advancement.criterion.CriterionConditions;
-import net.minecraft.client.gui.screen.advancement.AdvancementTab;
-import net.minecraft.client.gui.screen.advancement.AdvancementWidget;
-import net.minecraft.client.gui.screen.advancement.AdvancementsScreen;
-import net.minecraft.client.network.ClientAdvancementManager;
-import net.minecraft.client.resource.language.I18n;
-import net.minecraft.util.ActionResult;
+import net.minecraft.advancements.Advancement;
+import net.minecraft.advancements.AdvancementNode;
+import net.minecraft.advancements.AdvancementProgress;
+import net.minecraft.client.gui.screens.advancements.AdvancementWidget;
+import net.minecraft.client.gui.screens.advancements.AdvancementsScreen;
+import net.minecraft.client.multiplayer.ClientAdvancements;
+import net.minecraft.client.resources.language.I18n;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.InteractionResult;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.config.Configurator;
 
-public class AdvancementInfo implements ClientModInitializer
-{
+public class AdvancementInfo implements ClientModInitializer {
+
     static final String MODID = "advancementinfo";
     static final String VERSION = "@VERSION@";
     public static final Logger LOGGER = LogManager.getLogger();
@@ -45,38 +38,41 @@ public class AdvancementInfo implements ClientModInitializer
 
     public static List<AdvancementStep> getSteps(AdvancementWidgetAccessor widget) {
         List<AdvancementStep> result = new ArrayList<>();
-        addStep(result, widget.getProgress(), widget.getProgress().getUnobtainedCriteria(), false);
-        addStep(result, widget.getProgress(), widget.getProgress().getObtainedCriteria(), true);
-        return result;        
+        AdvancementProgress progress = widget.getProgress();
+        if (progress != null) {
+            addStep(result, progress, progress.getRemainingCriteria(), false);
+            addStep(result, progress, progress.getCompletedCriteria(), true);
+        }
+        return result;
     }
-    
+
     private static void addStep(List<AdvancementStep> result, AdvancementProgress progress, Iterable<String> criteria, boolean obtained) {
-        final String[] prefixes = new String[] { "item.minecraft", "block.minecraft", "entity.minecraft", "container", "effect.minecraft", "biome.minecraft" };
-        // criteria is actually a List<> .. but play nice
+        final String[] prefixes =
+                new String[] {"item.minecraft", "block.minecraft", "entity.minecraft", "container", "effect.minecraft", "biome.minecraft"};
         ArrayList<String> sorted = new ArrayList<>();
-        for (String s:criteria) {
+        for (String s : criteria) {
             sorted.add(s);
         }
         ArrayList<String> details = null;
         Collections.sort(sorted);
-        for (String s: sorted) {
+        for (String s : sorted) {
             String translation = null;
             String key = s;
             if (key.startsWith("minecraft:")) {
-                key=key.substring(10);
+                key = key.substring(10);
             }
             if (key.startsWith("textures/entity/")) {
                 String entityAppearance = key.substring(16);
                 int dotPos;
-                if ((dotPos = entityAppearance.indexOf("."))>0) {
+                if ((dotPos = entityAppearance.indexOf(".")) > 0) {
                     entityAppearance = entityAppearance.substring(0, dotPos);
                 }
-                translation =  entityAppearance;
+                translation = entityAppearance;
             }
             if (translation == null) {
-                for (String prefix: prefixes) {
-                    if (I18n.hasTranslation(prefix+"."+key)) {
-                        translation = I18n.translate(prefix+"."+key);
+                for (String prefix : prefixes) {
+                    if (I18n.exists(prefix + "." + key)) {
+                        translation = I18n.get(prefix + "." + key);
                         break;
                     }
                 }
@@ -90,16 +86,15 @@ public class AdvancementInfo implements ClientModInitializer
 
     public static void setMatchingFrom(AdvancementsScreen screen, String text) {
         List<AdvancementStep> result = new ArrayList<>();
-        ClientAdvancementManager advancementHandler = ((AdvancementScreenAccessor)screen).getAdvancementHandler();
-        Collection<PlacedAdvancement> all = advancementHandler.getManager().getAdvancements();
+        ClientAdvancements advancementHandler = ((AdvancementScreenAccessor) screen).getAdvancementHandler();
         int lineCount = 0;
 
         text = text.toLowerCase();
-        for (PlacedAdvancement placed: all) {
-            Advancement adv = placed.getAdvancement();
-            net.minecraft.util.Identifier id = placed.getAdvancementEntry().id();
+        for (AdvancementNode node : advancementHandler.getTree().nodes()) {
+            Advancement adv = node.advancement();
+            Identifier id = node.holder().id();
 
-            if(id.getPath().startsWith("recipes/")) {
+            if (id.getPath().startsWith("recipes/")) {
                 continue;
             }
             if (adv.display().isEmpty()) {
@@ -116,20 +111,19 @@ public class AdvancementInfo implements ClientModInitializer
                 continue;
             }
             String title = display.getTitle().getString();
-            String desc  = display.getDescription().getString();
+            String desc = display.getDescription().getString();
             LOGGER.debug("- {} {}: {} ", id, title, desc);
-            if (title.toLowerCase().contains(text)
-            ||  desc.toLowerCase().contains(text)) {
+            if (title.toLowerCase().contains(text) || desc.toLowerCase().contains(text)) {
                 ArrayList<String> details = new ArrayList<>();
                 details.add(desc);
-                AdvancementWidget widget = screen.getAdvancementWidget(placed);
+                AdvancementWidget widget = screen.getAdvancementWidget(node);
                 if (widget == null) {
                     LOGGER.info("no widget found for advancement {} title {} description {}", id, title, desc);
                     continue;
                 }
-                boolean done = ((AdvancementWidgetAccessor)widget).getProgress().isDone();
+                boolean done = ((AdvancementWidgetAccessor) widget).getProgress().isDone();
                 result.add(new AdvancementStep(title, done, details));
-                lineCount+=2;
+                lineCount += 2;
             }
         }
         cachedClickList = result;
@@ -141,11 +135,12 @@ public class AdvancementInfo implements ClientModInitializer
     public void onInitializeClient() {
         Configurator.setLevel(LOGGER.getName(), Level.ALL);
         showAll = false;
-        if (FabricLoader.getInstance().isModLoaded("cloth-config2")) {
+        if (FabricLoader.getInstance().isModLoaded("cloth-config")
+                || FabricLoader.getInstance().isModLoaded("cloth-config2")) {
             ConfigHolder<ModConfig> configHolder = AutoConfig.register(ModConfig.class, JanksonConfigSerializer::new);
             configHolder.registerSaveListener((holder, modConfig) -> {
                 modConfig.validate();
-                return ActionResult.PASS;
+                return InteractionResult.PASS;
             });
             config = AutoConfig.getConfigHolder(ModConfig.class).getConfig();
         } else {

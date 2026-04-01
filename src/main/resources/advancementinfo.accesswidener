@@ -1,2 +1,7 @@
-accessWidener v2 named
-accessible class net/minecraft/client/gui/screen/advancement/AdvancementTabType
+accessWidener v2 official
+
+accessible class net/minecraft/client/gui/screens/advancements/AdvancementTabType
+
+accessible field net/minecraft/client/gui/screens/Screen font Lnet/minecraft/client/gui/Font;
+
+accessible method net/minecraft/client/gui/screens/Screen addWidget (Lnet/minecraft/client/gui/components/events/GuiEventListener;)Lnet/minecraft/client/gui/components/events/GuiEventListener;

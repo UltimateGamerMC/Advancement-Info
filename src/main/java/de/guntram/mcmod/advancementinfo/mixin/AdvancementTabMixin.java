@@ -1,10 +1,18 @@
 package de.guntram.mcmod.advancementinfo.mixin;
 
 import de.guntram.mcmod.advancementinfo.AdvancementInfo;
-import static de.guntram.mcmod.advancementinfo.AdvancementInfo.config;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.advancement.AdvancementTab;
-import net.minecraft.client.gui.screen.advancement.AdvancementsScreen;
+import java.util.Map;
+import net.minecraft.advancements.AdvancementHolder;
+import net.minecraft.advancements.DisplayInfo;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.screens.advancements.AdvancementTab;
+import net.minecraft.client.gui.screens.advancements.AdvancementWidget;
+import net.minecraft.client.gui.screens.advancements.AdvancementsScreen;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.client.renderer.texture.TextureManager;
+import net.minecraft.core.ClientAsset;
+import net.minecraft.resources.Identifier;
+import net.minecraft.util.Mth;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -17,84 +25,135 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(AdvancementTab.class)
 public class AdvancementTabMixin {
 
-    @Shadow @Final
+    @Shadow
+    @Final
     private AdvancementsScreen screen;
 
     @Shadow
-    private double originX;
+    private double scrollX;
 
     @Shadow
-    private double originY;
+    private double scrollY;
 
     @Shadow
-    private boolean initialized;
+    private int minX;
 
     @Shadow
-    private int minPanX;
+    private int minY;
 
     @Shadow
-    private int minPanY;
+    private int maxX;
 
     @Shadow
-    private int maxPanX;
+    private int maxY;
 
     @Shadow
-    private int maxPanY;
+    private boolean centered;
 
-    private int currentInfoWidth;
-    private int lastScreenWidth = 0;
-    private int lastScreenHeight = 0;
+    @Shadow
+    private DisplayInfo display;
 
-    @Inject(method="render", at = @At("HEAD"))
-    private void updateLayout(DrawContext context, int x, int y, CallbackInfo ci) {
-        if(screen != null) {
-            currentInfoWidth = config.infoWidth.calculate(screen.width);
+    @Shadow
+    private AdvancementWidget root;
 
-            if (lastScreenWidth != screen.width || lastScreenHeight != screen.height) {
-                lastScreenWidth = screen.width;
-                lastScreenHeight = screen.height;
+    @Shadow
+    private float fade;
 
-                int centerX = (screen.width - config.marginX*2 - currentInfoWidth - 18) / 2;
-                int centerY = (screen.height - config.marginY*2 - 27) / 2;
+    @Shadow
+    @Final
+    private Map<AdvancementHolder, AdvancementWidget> widgets;
 
-                this.originX = centerX - (this.maxPanX + this.minPanX) / 2;
-                this.originY = centerY - (this.maxPanY + this.minPanY) / 2;
-            }
-        }
+    private int advancementinfo$innerW() {
+        int iw = AdvancementInfo.config.infoWidth.calculate(screen.width);
+        return screen.width - AdvancementInfo.config.marginX * 2 - 18 - iw;
     }
 
-    @ModifyConstant(method="render", constant=@Constant(intValue = 234), require = 1)
-    private int getAdvTreeXSize(int orig) { return screen.width - config.marginX*2 - 2*9 - currentInfoWidth; }
+    private int advancementinfo$innerH() {
+        return screen.height - AdvancementInfo.config.marginY * 2 - 27;
+    }
 
-    @ModifyConstant(method="render", constant=@Constant(intValue = 113), require = 1)
-    private int getAdvTreeYSize(int orig) { return screen.height - config.marginY*2 - 3*9; }
+    @Inject(method = "extractContents", at = @At("HEAD"), cancellable = true)
+    private void advancementinfo$extractContents(GuiGraphicsExtractor graphics, int windowLeft, int windowTop, CallbackInfo ci) {
+        int innerW = advancementinfo$innerW();
+        int innerH = advancementinfo$innerH();
+        if (!this.centered) {
+            this.scrollX = innerW / 2.0 - (this.maxX + this.minX) / 2.0;
+            this.scrollY = innerH / 2.0 - (this.maxY + this.minY) / 2.0;
+            this.centered = true;
+        }
 
-    @ModifyConstant(method="render", constant=@Constant(intValue = 117), require = 1)
-    private int getAdvTreeXOrig(int orig) { return screen.width/2 - config.marginX - currentInfoWidth/2; }
+        graphics.enableScissor(windowLeft, windowTop, windowLeft + innerW, windowTop + innerH);
+        graphics.pose().pushMatrix();
+        graphics.pose().translate(windowLeft, windowTop);
+        Identifier background = (Identifier) this.display
+                .getBackground()
+                .map(ClientAsset.ResourceTexture::texturePath)
+                .orElse(TextureManager.INTENTIONAL_MISSING_TEXTURE);
+        int intScrollX = Mth.floor(this.scrollX);
+        int intScrollY = Mth.floor(this.scrollY);
+        int left = intScrollX % 16;
+        int top = intScrollY % 16;
 
-    @ModifyConstant(method="render", constant=@Constant(intValue = 56), require = 1)
-    private int getAdvTreeYOrig(int orig) { return screen.height/2 - config.marginY; }
-    
-    @ModifyConstant(method="move", constant=@Constant(intValue = 234), require = 2)
-    private int getMoveXCenter(int orig) { return screen.width - config.marginX*2 - 2*9 - currentInfoWidth; }
+        int maxTileX = (innerW + 16 - 1) / 16 + 1;
+        int maxTileY = (innerH + 16 - 1) / 16 + 1;
+        for (int x = -1; x <= maxTileX; x++) {
+            for (int y = -1; y <= maxTileY; y++) {
+                graphics.blit(RenderPipelines.GUI_TEXTURED, background, left + 16 * x, top + 16 * y, 0.0F, 0.0F, 16, 16, 16, 16);
+            }
+        }
 
-    @ModifyConstant(method="move", constant=@Constant(intValue = 113), require = 2)
-    private int getMoveYCenter(int orig) { return screen.height - config.marginY*2 - 3*9; }
+        this.root.extractConnectivity(graphics, intScrollX, intScrollY, true);
+        this.root.extractConnectivity(graphics, intScrollX, intScrollY, false);
+        this.root.extractRenderState(graphics, intScrollX, intScrollY);
+        graphics.pose().popMatrix();
+        graphics.disableScissor();
+        ci.cancel();
+    }
 
-    @ModifyConstant(method="render", constant=@Constant(intValue = 15), require = 1)
-    private int getXTextureRepeats(int orig) { return (screen.width-config.marginX*2 - currentInfoWidth) / 16 + 1; }
-
-    @ModifyConstant(method="render", constant=@Constant(intValue = 8), require = 1)
-    private int getYTextureRepeats(int orig) { return (screen.height-config.marginY*2) / 16 + 1; }
-
-    @ModifyConstant(method="drawWidgetTooltip", constant=@Constant(intValue = 234), require = 2)
-    private int getTooltipXSize(int orig) { return screen.width - config.marginX*2 - 2*9 - currentInfoWidth; }
-
-    @ModifyConstant(method="drawWidgetTooltip", constant=@Constant(intValue = 113), require = 2)
-    private int getTooltipYSize(int orig) { return screen.height - config.marginY*2 - 3*9; }
-
-    @Inject(method="drawWidgetTooltip", at=@At("HEAD"))
-    private void forgetMouseOver(DrawContext context, int i, int j, int y, int k, CallbackInfo ci) {
+    @Inject(method = "extractTooltips", at = @At("HEAD"), cancellable = true)
+    private void advancementinfo$extractTooltips(GuiGraphicsExtractor graphics, int mouseX, int mouseY, int xo, int yo, CallbackInfo ci) {
         AdvancementInfo.mouseOver = null;
+        int innerW = advancementinfo$innerW();
+        int innerH = advancementinfo$innerH();
+        graphics.fill(0, 0, innerW, innerH, Mth.floor(this.fade * 255.0F) << 24);
+        boolean hovering = false;
+        int intScrollX = Mth.floor(this.scrollX);
+        int intScrollY = Mth.floor(this.scrollY);
+        if (mouseX > 0 && mouseX < innerW && mouseY > 0 && mouseY < innerH) {
+            for (AdvancementWidget widget : this.widgets.values()) {
+                if (widget.isMouseOver(intScrollX, intScrollY, mouseX, mouseY)) {
+                    hovering = true;
+                    widget.extractHover(graphics, intScrollX, intScrollY, this.fade, xo, yo);
+                    break;
+                }
+            }
+        }
+
+        if (hovering) {
+            this.fade = Mth.clamp(this.fade + 0.02F, 0.0F, 0.3F);
+        } else {
+            this.fade = Mth.clamp(this.fade - 0.04F, 0.0F, 1.0F);
+        }
+        ci.cancel();
+    }
+
+    @ModifyConstant(method = "scroll", constant = @Constant(intValue = 234))
+    private int advancementinfo$scrollClampW(int original) {
+        return advancementinfo$innerW();
+    }
+
+    @ModifyConstant(method = "scroll", constant = @Constant(intValue = 113))
+    private int advancementinfo$scrollClampH(int original) {
+        return advancementinfo$innerH();
+    }
+
+    @ModifyConstant(method = "canScrollHorizontally", constant = @Constant(intValue = 234))
+    private int advancementinfo$canScrollX(int original) {
+        return advancementinfo$innerW();
+    }
+
+    @ModifyConstant(method = "canScrollVertically", constant = @Constant(intValue = 113))
+    private int advancementinfo$canScrollY(int original) {
+        return advancementinfo$innerH();
     }
 }

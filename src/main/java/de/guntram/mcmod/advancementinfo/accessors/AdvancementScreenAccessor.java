@@ -1,12 +1,7 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package de.guntram.mcmod.advancementinfo.accessors;
 
-import net.minecraft.client.network.ClientAdvancementManager;
+import net.minecraft.client.multiplayer.ClientAdvancements;
 
 public interface AdvancementScreenAccessor {
-        public ClientAdvancementManager getAdvancementHandler();
+    ClientAdvancements getAdvancementHandler();
 }

@@ -3,8 +3,11 @@
     "package": "de.guntram.mcmod.advancementinfo.mixin",
     "minVersion": "0.6",
     "client": [
-        "AdvancementScreenMixin", "AdvancementTabMixin", "AdvancementWidgetMixin",
-        "AdvancementProgressMixin", "AdvancementTabTypeMixin", "AdvancementDisplayMixin"
+        "AdvancementScreenMixin",
+        "AdvancementTabMixin",
+        "AdvancementWidgetMixin",
+        "AdvancementTabTypeMixin",
+        "DisplayInfoMixin"
     ],
     "injectors": {
         "defaultRequire": 1
