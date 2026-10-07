@@ -4,7 +4,7 @@ import de.guntram.mcmod.advancementinfo.AdvancementInfo;
 import de.guntram.mcmod.advancementinfo.accessors.AdvancementWidgetAccessor;
 import net.minecraft.advancements.AdvancementProgress;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.gui.screens.advancements.AdvancementTab;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.advancements.AdvancementWidget;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -19,15 +19,12 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class AdvancementWidgetMixin implements AdvancementWidgetAccessor {
 
     @Shadow
-    @Final
-    private AdvancementTab tab;
-
-    @Shadow
     private AdvancementProgress progress;
 
     @ModifyConstant(method = "extractHover", constant = @Constant(intValue = 113))
     private int advancementinfo$hoverInnerH(int original) {
-        return tab.getScreen().height - AdvancementInfo.config.marginY * 2 - 27;
+        var screen = Minecraft.getInstance().gui.screen();
+        return screen == null ? original : screen.height - AdvancementInfo.config.marginY * 2 - 27;
     }
 
     @Inject(method = "extractHover", at = @At("HEAD"))
@@ -38,6 +35,7 @@ public class AdvancementWidgetMixin implements AdvancementWidgetAccessor {
             float fade,
             int screenxo,
             int screenyo,
+            int screenWidth,
             CallbackInfo ci
     ) {
         AdvancementInfo.mouseOver = (AdvancementWidget) (Object) this;

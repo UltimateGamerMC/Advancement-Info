@@ -16,8 +16,8 @@
     "mixins": [ "mixins.advancementinfo.json" ],
     "accessWidener": "advancementinfo.accesswidener",
     "depends": {
-        "fabricloader": "\u003e\u003d0.18.6",
-        "minecraft": "~26.1.1",
+        "fabricloader": ">=0.19.0",
+        "minecraft": "~26.3",
         "java": "\u003e\u003d25",
         "fabric-api": "*",
         "cloth-config": "*"

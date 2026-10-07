@@ -3,14 +3,11 @@ package de.guntram.mcmod.advancementinfo.mixin;
 import de.guntram.mcmod.advancementinfo.AdvancementInfo;
 import java.util.Map;
 import net.minecraft.advancements.AdvancementHolder;
-import net.minecraft.advancements.DisplayInfo;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.advancements.AdvancementTab;
 import net.minecraft.client.gui.screens.advancements.AdvancementWidget;
 import net.minecraft.client.gui.screens.advancements.AdvancementsScreen;
 import net.minecraft.client.renderer.RenderPipelines;
-import net.minecraft.client.renderer.texture.TextureManager;
-import net.minecraft.core.ClientAsset;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 import org.spongepowered.asm.mixin.Final;
@@ -51,7 +48,11 @@ public class AdvancementTabMixin {
     private boolean centered;
 
     @Shadow
-    private DisplayInfo display;
+    @Final
+    private Identifier background;
+
+    @Shadow
+    private AdvancementWidget hovered;
 
     @Shadow
     private AdvancementWidget root;
@@ -85,11 +86,7 @@ public class AdvancementTabMixin {
         graphics.enableScissor(windowLeft, windowTop, windowLeft + innerW, windowTop + innerH);
         graphics.pose().pushMatrix();
         graphics.pose().translate(windowLeft, windowTop);
-        Identifier background = (Identifier) this.display
-                .getBackground()
-                .map(ClientAsset.ResourceTexture::texturePath)
-                .orElse(TextureManager.INTENTIONAL_MISSING_TEXTURE);
-        int intScrollX = Mth.floor(this.scrollX);
+                int intScrollX = Mth.floor(this.scrollX);
         int intScrollY = Mth.floor(this.scrollY);
         int left = intScrollX % 16;
         int top = intScrollY % 16;
@@ -111,30 +108,27 @@ public class AdvancementTabMixin {
     }
 
     @Inject(method = "extractTooltips", at = @At("HEAD"), cancellable = true)
-    private void advancementinfo$extractTooltips(GuiGraphicsExtractor graphics, int mouseX, int mouseY, int xo, int yo, CallbackInfo ci) {
-        AdvancementInfo.mouseOver = null;
+    private void advancementinfo$extractTooltips(GuiGraphicsExtractor graphics, int xo, int yo, CallbackInfo ci) {
         int innerW = advancementinfo$innerW();
         int innerH = advancementinfo$innerH();
         graphics.fill(0, 0, innerW, innerH, Mth.floor(this.fade * 255.0F) << 24);
-        boolean hovering = false;
-        int intScrollX = Mth.floor(this.scrollX);
-        int intScrollY = Mth.floor(this.scrollY);
-        if (mouseX > 0 && mouseX < innerW && mouseY > 0 && mouseY < innerH) {
-            for (AdvancementWidget widget : this.widgets.values()) {
-                if (widget.isMouseOver(intScrollX, intScrollY, mouseX, mouseY)) {
-                    hovering = true;
-                    widget.extractHover(graphics, intScrollX, intScrollY, this.fade, xo, yo);
-                    break;
-                }
-            }
-        }
-
-        if (hovering) {
-            this.fade = Mth.clamp(this.fade + 0.02F, 0.0F, 0.3F);
-        } else {
-            this.fade = Mth.clamp(this.fade - 0.04F, 0.0F, 1.0F);
+        AdvancementInfo.mouseOver = this.hovered;
+        if (this.hovered != null) {
+            int intScrollX = Mth.floor(this.scrollX);
+            int intScrollY = Mth.floor(this.scrollY);
+            this.hovered.extractHover(graphics, intScrollX, intScrollY, this.fade, xo, yo, screen.width - AdvancementInfo.config.marginX - AdvancementInfo.config.infoWidth.calculate(screen.width));
         }
         ci.cancel();
+    }
+
+    @ModifyConstant(method = "tick", constant = @Constant(intValue = 234))
+    private int advancementinfo$tickHoverW(int original) {
+        return advancementinfo$innerW();
+    }
+
+    @ModifyConstant(method = "tick", constant = @Constant(intValue = 113))
+    private int advancementinfo$tickHoverH(int original) {
+        return advancementinfo$innerH();
     }
 
     @ModifyConstant(method = "scroll", constant = @Constant(intValue = 234))

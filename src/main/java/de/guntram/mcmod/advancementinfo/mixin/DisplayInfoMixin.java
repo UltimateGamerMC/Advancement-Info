@@ -16,7 +16,7 @@ public class DisplayInfoMixin {
     @Final
     private boolean hidden;
 
-    @Inject(method = "isHidden", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "hidden", at = @At("HEAD"), cancellable = true)
     private void advancementinfo$isHidden(CallbackInfoReturnable<Boolean> cir) {
         cir.setReturnValue(hidden && !AdvancementInfo.showAll);
         cir.cancel();

@@ -12,7 +12,7 @@ public class AdvancementTabTypeMixin {
 
     @ModifyConstant(method = "getX", constant = @Constant(intValue = 248))
     private int advancementinfo$rightTabX(int original) {
-        var screen = Minecraft.getInstance().screen;
+        var screen = Minecraft.getInstance().gui.screen();
         if (screen == null) {
             return original;
         }
@@ -21,7 +21,7 @@ public class AdvancementTabTypeMixin {
 
     @ModifyConstant(method = "getY", constant = @Constant(intValue = 136))
     private int advancementinfo$belowTabY(int original) {
-        var screen = Minecraft.getInstance().screen;
+        var screen = Minecraft.getInstance().gui.screen();
         if (screen == null) {
             return original;
         }

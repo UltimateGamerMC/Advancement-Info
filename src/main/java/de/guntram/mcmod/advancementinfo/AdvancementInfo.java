@@ -71,7 +71,7 @@ public class AdvancementInfo implements ClientModInitializer {
             }
             if (translation == null) {
                 for (String prefix : prefixes) {
-                    if (I18n.exists(prefix + "." + key)) {
+                    if (net.minecraft.locale.Language.getInstance().has(prefix + "." + key)) {
                         translation = I18n.get(prefix + "." + key);
                         break;
                     }
@@ -90,7 +90,7 @@ public class AdvancementInfo implements ClientModInitializer {
         int lineCount = 0;
 
         text = text.toLowerCase();
-        for (AdvancementNode node : advancementHandler.getTree().nodes()) {
+        for (AdvancementNode node : advancementHandler.tree().nodes()) {
             Advancement adv = node.advancement();
             Identifier id = node.holder().id();
 
@@ -102,16 +102,16 @@ public class AdvancementInfo implements ClientModInitializer {
                 continue;
             }
             var display = adv.display().get();
-            if (display.getTitle() == null) {
+            if (display.title() == null) {
                 LOGGER.debug("! {} Has no title", id);
                 continue;
             }
-            if (display.getDescription() == null) {
+            if (display.description() == null) {
                 LOGGER.debug("! {} Has no description", id);
                 continue;
             }
-            String title = display.getTitle().getString();
-            String desc = display.getDescription().getString();
+            String title = display.title().getString();
+            String desc = display.description().getString();
             LOGGER.debug("- {} {}: {} ", id, title, desc);
             if (title.toLowerCase().contains(text) || desc.toLowerCase().contains(text)) {
                 ArrayList<String> details = new ArrayList<>();

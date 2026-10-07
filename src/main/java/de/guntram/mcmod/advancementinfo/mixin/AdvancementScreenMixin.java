@@ -53,6 +53,12 @@ public class AdvancementScreenMixin implements AdvancementScreenAccessor {
     private AdvancementTab selectedTab;
 
     @Shadow
+    private int leftPos;
+
+    @Shadow
+    private int topPos;
+
+    @Shadow
     private Map<AdvancementHolder, AdvancementTab> tabs;
 
     private Screen advancementinfo$screen() {
@@ -79,12 +85,12 @@ public class AdvancementScreenMixin implements AdvancementScreenAccessor {
         return advancementinfo$screen().height - config.marginY * 2 - 27;
     }
 
-    @ModifyConstant(method = "extractRenderState", constant = @Constant(intValue = 252))
+    @ModifyConstant(method = "repositionElements", constant = @Constant(intValue = 252))
     private int advancementinfo$extractWindowW(int original) {
         return advancementinfo$windowW();
     }
 
-    @ModifyConstant(method = "extractRenderState", constant = @Constant(intValue = 140))
+    @ModifyConstant(method = "repositionElements", constant = @Constant(intValue = 140))
     private int advancementinfo$extractWindowH(int original) {
         return advancementinfo$windowH();
     }
@@ -120,7 +126,7 @@ public class AdvancementScreenMixin implements AdvancementScreenAccessor {
                     @At(
                             value = "INVOKE",
                             target =
-                                    "Lnet/minecraft/client/gui/screens/advancements/AdvancementsScreen;extractWindow(Lnet/minecraft/client/gui/GuiGraphicsExtractor;IIII)V"))
+                                    "Lnet/minecraft/client/gui/screens/advancements/AdvancementsScreen;extractWindow(Lnet/minecraft/client/gui/GuiGraphicsExtractor;II)V"))
     private void advancementinfo$rightPanelFill(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta, CallbackInfo ci) {
         advancementinfo$currentInfoWidth = advancementinfo$infoW();
         if (advancementinfo$currentInfoWidth == 0) {
@@ -135,13 +141,15 @@ public class AdvancementScreenMixin implements AdvancementScreenAccessor {
     }
 
     @Inject(method = "extractWindow", at = @At("HEAD"), cancellable = true)
-    private void advancementinfo$extractWindow(GuiGraphicsExtractor graphics, int x, int y, int mouseX, int mouseY, CallbackInfo ci) {
+    private void advancementinfo$extractWindow(GuiGraphicsExtractor graphics, int mouseX, int mouseY, CallbackInfo ci) {
+        int x = this.leftPos;
+        int y = this.topPos;
         advancementinfo$currentInfoWidth = advancementinfo$infoW();
         int iw = advancementinfo$currentInfoWidth;
         int wW = advancementinfo$windowW();
         int wH = advancementinfo$windowH();
-        int screenW = wW;
-        int screenH = wH;
+        int screenW = 252;
+        int screenH = 140;
         int actualW = advancementinfo$screen().width - config.marginX - iw - x;
         int actualH = advancementinfo$screen().height - config.marginY - y;
         int halfW = screenW / 2;
